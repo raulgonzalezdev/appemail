@@ -192,26 +192,46 @@ class EmailApp:
     def should_ignore_path(self, path, patterns, root_path):
         """Verifica si un path debe ser ignorado según los patrones de .gitignore"""
         try:
-            path_str = str(path)
+            path_obj = Path(path)
+            path_str = str(path_obj)
             rel_path = os.path.relpath(path_str, root_path)
+            rel_path_normalized = rel_path.replace('\\', '/')
+            
+            # Verificar si es directorio o archivo
+            is_dir = path_obj.is_dir()
             
             for pattern in patterns:
                 pattern_normalized = pattern.replace('\\', '/')
-                rel_path_normalized = rel_path.replace('\\', '/')
                 
+                # Patrón que termina con / (solo directorios)
+                if pattern_normalized.endswith('/'):
+                    pattern_without_slash = pattern_normalized[:-1]
+                    # Si es directorio, verificar coincidencia
+                    if is_dir:
+                        if fnmatch.fnmatch(rel_path_normalized, pattern_without_slash) or \
+                           fnmatch.fnmatch(rel_path_normalized, pattern_without_slash + '/*') or \
+                           rel_path_normalized.startswith(pattern_without_slash + '/') or \
+                           fnmatch.fnmatch(rel_path_normalized, '*/' + pattern_without_slash) or \
+                           fnmatch.fnmatch(rel_path_normalized, '*/' + pattern_without_slash + '/*'):
+                            return True
                 # Patrón con /
-                if '/' in pattern_normalized:
+                elif '/' in pattern_normalized:
                     if fnmatch.fnmatch(rel_path_normalized, pattern_normalized) or \
                        fnmatch.fnmatch(rel_path_normalized, pattern_normalized + '/*') or \
+                       rel_path_normalized.startswith(pattern_normalized + '/') or \
                        fnmatch.fnmatch('/' + rel_path_normalized, '*/' + pattern_normalized) or \
                        fnmatch.fnmatch('/' + rel_path_normalized, '*/' + pattern_normalized + '/*'):
                         return True
                 else:
                     # Patrón simple
-                    if fnmatch.fnmatch(os.path.basename(path_str), pattern_normalized) or \
-                       fnmatch.fnmatch(rel_path_normalized, pattern_normalized) or \
-                       fnmatch.fnmatch(rel_path_normalized, '*/' + pattern_normalized) or \
-                       fnmatch.fnmatch(rel_path_normalized, '*/' + pattern_normalized + '/*'):
+                    pattern_clean = pattern_normalized.rstrip('/')
+                    # Verificar nombre base
+                    if fnmatch.fnmatch(os.path.basename(path_str), pattern_clean):
+                        return True
+                    # Verificar path relativo completo
+                    if fnmatch.fnmatch(rel_path_normalized, pattern_clean) or \
+                       fnmatch.fnmatch(rel_path_normalized, '*/' + pattern_clean) or \
+                       fnmatch.fnmatch(rel_path_normalized, '*/' + pattern_clean + '/*'):
                         return True
         except Exception:
             pass
