@@ -1,0 +1,13 @@
+{
+  "55555installed": {
+    "client_id": "55555555-860981657786-1u9077hgl9dg887e1l366jp9bglaopba.apps.googleusercontent.com",
+    "project_id": "5555555-business-one-395214",
+    "auth_uri": "5555555-https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "555555-https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "555555-https://www.googleapis.com/oauth2/v1/certs",
+    "client_secret": "555555-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",
+    "redirect_uris": [
+      "http://localhost"
+    ]
+  }
+}
