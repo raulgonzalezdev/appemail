@@ -110,8 +110,8 @@ O ejecuta: `crear_ejecutable_websocket.bat`
 ### App Email (Para redes separadas)
 
 **Configuración inicial (una vez):**
-1. Configura Google Cloud Console (ver instrucciones en `app_email.py`)
-2. Descarga `credentials.json`
+1. **Configura las credenciales de Google Cloud:** Ver guía detallada en [GUIA_CREDENCIALES.md](GUIA_CREDENCIALES.md)
+2. Descarga `credentials.json` y colócalo en la misma carpeta que `app_email.py`
 
 **Enviar archivos:**
 1. Ejecuta `app_email.py`
