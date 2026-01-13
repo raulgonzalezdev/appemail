@@ -5,6 +5,8 @@ token.pickle
 servcio.txt
 configurar_credenciales.py
 INSTRUCCIONES_CREDENCIALES.md
+pickle.xst
+*.xst
 
 # Python
 __pycache__/
@@ -22,6 +24,9 @@ dist/
 # PyInstaller
 *.exe
 *.spec
+
+# Archivos ZIP generados
+*.zip
 
 # IDE
 .vscode/

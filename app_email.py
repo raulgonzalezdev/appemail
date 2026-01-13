@@ -16,6 +16,9 @@ from email.mime.base import MIMEBase
 from email import encoders
 import pickle
 import threading
+import zipfile
+from pathlib import Path
+import fnmatch
 
 try:
     from google.auth.transport.requests import Request
@@ -102,6 +105,7 @@ class EmailApp:
         file_buttons.grid(row=3, column=1, sticky=tk.W, padx=5, pady=5)
         
         ttk.Button(file_buttons, text="Agregar archivo(s)", command=self.add_files).pack(side=tk.LEFT, padx=2)
+        ttk.Button(file_buttons, text="Agregar carpeta (ZIP)", command=self.add_folder_as_zip).pack(side=tk.LEFT, padx=2)
         ttk.Button(file_buttons, text="Quitar seleccionado", command=self.remove_file).pack(side=tk.LEFT, padx=2)
         
         # Botón enviar
@@ -170,6 +174,100 @@ class EmailApp:
         except Exception as e:
             self.status_var.set(f"Error de conexión: {str(e)}")
             messagebox.showerror("Error", f"No se pudo conectar a Gmail: {str(e)}")
+    
+    def read_gitignore(self, gitignore_path):
+        """Lee un archivo .gitignore y retorna lista de patrones"""
+        patterns = []
+        if os.path.exists(gitignore_path):
+            try:
+                with open(gitignore_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#'):
+                            patterns.append(line)
+            except Exception:
+                pass
+        return patterns
+    
+    def should_ignore_path(self, path, patterns, root_path):
+        """Verifica si un path debe ser ignorado según los patrones de .gitignore"""
+        try:
+            path_str = str(path)
+            rel_path = os.path.relpath(path_str, root_path)
+            
+            for pattern in patterns:
+                pattern_normalized = pattern.replace('\\', '/')
+                rel_path_normalized = rel_path.replace('\\', '/')
+                
+                # Patrón con /
+                if '/' in pattern_normalized:
+                    if fnmatch.fnmatch(rel_path_normalized, pattern_normalized) or \
+                       fnmatch.fnmatch(rel_path_normalized, pattern_normalized + '/*') or \
+                       fnmatch.fnmatch('/' + rel_path_normalized, '*/' + pattern_normalized) or \
+                       fnmatch.fnmatch('/' + rel_path_normalized, '*/' + pattern_normalized + '/*'):
+                        return True
+                else:
+                    # Patrón simple
+                    if fnmatch.fnmatch(os.path.basename(path_str), pattern_normalized) or \
+                       fnmatch.fnmatch(rel_path_normalized, pattern_normalized) or \
+                       fnmatch.fnmatch(rel_path_normalized, '*/' + pattern_normalized) or \
+                       fnmatch.fnmatch(rel_path_normalized, '*/' + pattern_normalized + '/*'):
+                        return True
+        except Exception:
+            pass
+        return False
+    
+    def create_zip_from_folder(self, folder_path, output_zip_path):
+        """Crea un ZIP de una carpeta respetando .gitignore"""
+        folder_path = Path(folder_path).resolve()
+        root_path = str(folder_path)
+        
+        # Leer .gitignore
+        gitignore_path = folder_path / '.gitignore'
+        gitignore_patterns = self.read_gitignore(gitignore_path)
+        # Siempre excluir .git, .gitignore y *.zip
+        gitignore_patterns.extend(['.git', '.gitignore', '*.zip'])
+        
+        with zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for root, dirs, files in os.walk(folder_path):
+                # Filtrar directorios antes de recorrer
+                dirs[:] = [d for d in dirs if not self.should_ignore_path(Path(root) / d, gitignore_patterns, root_path)]
+                
+                for file in files:
+                    file_path = Path(root) / file
+                    if not self.should_ignore_path(file_path, gitignore_patterns, root_path):
+                        arcname = os.path.relpath(file_path, root_path)
+                        zipf.write(file_path, arcname)
+    
+    def add_folder_as_zip(self):
+        """Agrega una carpeta como ZIP respetando .gitignore"""
+        folder = filedialog.askdirectory(title="Seleccionar carpeta para crear ZIP")
+        if not folder:
+            return
+        
+        try:
+            self.status_var.set("Creando ZIP...")
+            folder_path = Path(folder)
+            zip_name = folder_path.name + '.zip'
+            zip_path = folder_path.parent / zip_name
+            
+            # Si el ZIP ya existe, preguntar
+            if zip_path.exists():
+                if not messagebox.askyesno("ZIP existe", f"El archivo {zip_name} ya existe. ¿Deseas reemplazarlo?"):
+                    return
+            
+            self.create_zip_from_folder(folder, str(zip_path))
+            
+            # Agregar el ZIP a la lista
+            if str(zip_path) not in self.selected_files:
+                self.selected_files.append(str(zip_path))
+                self.file_listbox.insert(tk.END, os.path.basename(zip_path))
+                self.status_var.set(f"ZIP creado: {os.path.basename(zip_path)}")
+            
+        except Exception as e:
+            error_msg = f"Error al crear ZIP: {str(e)}"
+            self.status_var.set(error_msg)
+            messagebox.showerror("Error", error_msg)
     
     def add_files(self):
         """Agrega archivos a la lista"""
