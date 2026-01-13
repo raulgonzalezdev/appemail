@@ -16,6 +16,7 @@ dist/
 *.egg-info/
 
 # PyInstaller
+*.exe
 *.spec
 
 # IDE
